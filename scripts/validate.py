@@ -1,20 +1,24 @@
 
 #!/usr/bin/env python3
 """
-scripts/validate.py
-===================
+scripts/validate.py  —  Publications V2.1
+==========================================
 Validates publications.yaml against schema.json.
 
-Checks:
-  1. YAML syntax
-  2. JSON Schema (Draft 2020-12) — types, required fields, enum values, patterns
-  3. Duplicate publication IDs
-  4. Cross-reference integrity (relations.derived_from / related_to point to real IDs)
-  5. featured_order uniqueness among selected papers
-  6. selected=true papers must have featured_order
-  7. one_line_contribution length warning (>200 chars)
+Checks (in order):
+  1.  YAML syntax
+  2.  JSON Schema (Draft 2020-12)
+  3.  Duplicate publication IDs
+  4.  Duplicate titles
+  5.  Cross-reference integrity (relations point to real IDs)
+  6.  Version integrity (versions.current must appear in versions.history)
+  7.  Selected paper count (<= 4)
+  8.  featured_order continuity (must be 1..N with no gaps)
+  9.  selected=true papers must have featured_order
+  10. selected=true papers must have one_line_contribution
+  11. one_line_contribution length warning (>200 chars)
 
-Exit code 0 = PASS, 1 = FAIL
+Exit code 0 = PASS (warnings are non-fatal), 1 = FAIL
 """
 
 import json
@@ -36,6 +40,7 @@ except ImportError:
 ROOT        = Path(__file__).resolve().parents[1]
 YAML_PATH   = ROOT / "publications.yaml"
 SCHEMA_PATH = ROOT / "schema.json"
+MAX_SELECTED = 4
 
 
 def load_yaml(path: Path) -> dict:
@@ -82,71 +87,114 @@ def main() -> None:
 
     print("[PASS] JSON Schema validation")
 
-    # ── 2. Duplicate ID check ──────────────────────────────────────────────
     publications = data.get("publications", [])
+
+    # ── 2. Duplicate ID check ──────────────────────────────────────────────
     ids = [p["id"] for p in publications if isinstance(p, dict) and "id" in p]
     dupes = sorted(set(x for x in ids if ids.count(x) > 1))
-
     if dupes:
-        print(f"\n[FAIL] Duplicate publication IDs detected:")
+        print(f"\n[FAIL] Duplicate publication IDs:")
         for d in dupes:
             print(f"  x  {d}")
         sys.exit(1)
-
     print("[PASS] No duplicate IDs")
 
-    # ── 3. Cross-reference integrity ───────────────────────────────────────
+    # ── 3. Duplicate title check ───────────────────────────────────────────
+    titles = [p.get("title", "") for p in publications if isinstance(p, dict)]
+    dupe_titles = sorted(set(t for t in titles if titles.count(t) > 1 and t))
+    if dupe_titles:
+        print(f"\n[FAIL] Duplicate titles detected:")
+        for t in dupe_titles:
+            print(f"  x  {t[:80]}")
+        sys.exit(1)
+    print("[PASS] No duplicate titles")
+
+    # ── 4. Cross-reference integrity ───────────────────────────────────────
     id_set = set(ids)
     ref_errors = []
-
     for pub in publications:
         pub_id    = pub.get("id", "UNKNOWN")
         relations = pub.get("relations", {}) or {}
-
         for ref_type in ("derived_from", "related_to"):
             for ref_id in (relations.get(ref_type) or []):
                 if ref_id not in id_set:
                     ref_errors.append(
                         f"  x  '{pub_id}' -> {ref_type}: '{ref_id}' not found"
                     )
-
     if ref_errors:
         print(f"\n[FAIL] Cross-reference errors ({len(ref_errors)}):")
         for e in ref_errors:
             print(e)
         sys.exit(1)
-
     print("[PASS] Cross-reference integrity")
 
-    # ── 4. featured_order uniqueness among selected papers ─────────────────
+    # ── 5. Version integrity ───────────────────────────────────────────────
+    ver_errors = []
+    for pub in publications:
+        pub_id  = pub.get("id", "UNKNOWN")
+        ver     = pub.get("versions", {}) or {}
+        current = ver.get("current")
+        history = ver.get("history", []) or []
+        if current and history:
+            history_versions = [h.get("version") for h in history if isinstance(h, dict)]
+            if current not in history_versions:
+                ver_errors.append(
+                    f"  x  '{pub_id}': versions.current='{current}' "
+                    f"not found in versions.history {history_versions}"
+                )
+    if ver_errors:
+        print(f"\n[FAIL] Version integrity errors:")
+        for e in ver_errors:
+            print(e)
+        sys.exit(1)
+    print("[PASS] Version integrity")
+
+    # ── 6. Selected paper count ────────────────────────────────────────────
     selected_pubs = [p for p in publications
                      if isinstance(p, dict) and p.get("selected") is True]
-    featured_orders = [p.get("featured_order") for p in selected_pubs
-                       if p.get("featured_order") is not None]
-    dupe_orders = sorted(set(x for x in featured_orders if featured_orders.count(x) > 1))
-
-    if dupe_orders:
-        print(f"\n[FAIL] Duplicate featured_order values among selected papers:")
-        for order in dupe_orders:
-            culprits = [p["id"] for p in selected_pubs
-                        if p.get("featured_order") == order]
-            print(f"  x  featured_order={order}: {culprits}")
+    if len(selected_pubs) > MAX_SELECTED:
+        print(f"\n[FAIL] Too many selected papers: "
+              f"{len(selected_pubs)} (maximum: {MAX_SELECTED})")
+        for p in selected_pubs:
+            print(f"  x  {p['id']}")
         sys.exit(1)
+    print(f"[PASS] Selected paper count ({len(selected_pubs)}/{MAX_SELECTED})")
 
-    print("[PASS] featured_order uniqueness")
+    # ── 7. featured_order continuity ──────────────────────────────────────
+    featured_orders = sorted(
+        p.get("featured_order") for p in selected_pubs
+        if p.get("featured_order") is not None
+    )
+    expected_orders = list(range(1, len(selected_pubs) + 1))
+    if featured_orders != expected_orders:
+        print(f"\n[FAIL] featured_order must be continuous 1..{len(selected_pubs)}:")
+        print(f"  Expected: {expected_orders}")
+        print(f"  Got:      {featured_orders}")
+        sys.exit(1)
+    print(f"[PASS] featured_order continuity {featured_orders}")
 
-    # ── 5. selected=true must have featured_order ──────────────────────────
-    missing_order = [p["id"] for p in selected_pubs
-                     if p.get("featured_order") is None]
+    # ── 8. selected=true must have featured_order ──────────────────────────
+    missing_order = [p["id"] for p in selected_pubs if p.get("featured_order") is None]
     if missing_order:
         print(f"\n[FAIL] selected=true but missing featured_order:")
         for pid in missing_order:
             print(f"  x  {pid}")
         sys.exit(1)
+    print("[PASS] All selected papers have featured_order")
 
-    print("[PASS] selected papers have featured_order")
+    # ── 9. selected=true must have one_line_contribution ──────────────────
+    missing_contrib = [
+        p["id"] for p in selected_pubs
+        if not str(p.get("one_line_contribution") or "").strip()
+    ]
+    if missing_contrib:
+        print(f"\n[FAIL] selected=true but missing one_line_contribution:")
+        for pid in missing_contrib:
+            print(f"  x  {pid}")
+        sys.exit(1)
+    print("[PASS] All selected papers have one_line_contribution")
 
-    # ── 6. one_line_contribution length warning ────────────────────────────
+    # ── 10. one_line_contribution length warning ───────────────────────────
     warnings = []
     for pub in publications:
         contrib = pub.get("one_line_contribution")
@@ -154,20 +202,17 @@ def main() -> None:
             length = len(str(contrib).strip())
             if length > 200:
                 warnings.append((pub["id"], length))
-
     if warnings:
         print(f"\n[WARNING] one_line_contribution exceeds 200 characters:")
         for pid, length in warnings:
-            print(f"  !  {pid}: {length} characters (max: 200)")
-        # Warning only — not a hard failure
+            print(f"  !  {pid}: {length} chars (max: 200)")
 
     # ── Summary ────────────────────────────────────────────────────────────
-    selected_count = len(selected_pubs)
     print(
         f"\n[PASS] All checks passed -- "
         f"{len(publications)} publications, "
         f"{len(id_set)} unique IDs, "
-        f"{selected_count} selected for featured display"
+        f"{len(selected_pubs)} selected for featured display"
     )
 
 
