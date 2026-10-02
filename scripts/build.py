@@ -1,27 +1,30 @@
 
 #!/usr/bin/env python3
 """
-scripts/build.py  —  Publications V2
-=====================================
+scripts/build.py  —  Publications V2.1
+========================================
 Reads publications.yaml and generates:
-  generated/publications.json   — machine-readable registry (with history preservation)
-  generated/bibliography.bib    — BibTeX for all publications
-  README.md                     — editorial research landing page (V2 structure)
+  generated/publications.json   — machine-readable registry (metadata only)
+  generated/bibliography.bib    — BibTeX with correct entry types
+  README.md                     — editorial research landing page
 
-V2 KEY DESIGN CHANGES vs V1:
-  - README is a research landing page, not a database dump
-  - First screen: researcher identity + research overview (no "Auto-generated" warning)
-  - Selected Research section: 4 featured papers with one-line contributions
-  - Complete Publication Record: <details> cards grouped by research area
-  - BibTeX: only 2-3 entries in README; full bibliography in generated/bibliography.bib
-  - "Auto-generated" notice moved to bottom
-  - Target: 120-180 lines
+V2.1 IMPROVEMENTS over V2:
+  - README header: "# Scott Sun" (researcher first, not "# Publications")
+  - Research Overview: editorial prose, not institutional boilerplate
+  - Architecture diagram: "Causality & Time" (not paper title as claim)
+  - Selected Research cards: contribution + evidence status + links only
+    (no redundant Research area / Keywords in card — moved to Complete Record)
+  - Complete Publication Record: two-layer (always-visible line + details)
+  - Evidence status: renamed from "Epistemic status" for reader clarity
+  - BibTeX entry types: @misc for working-paper/preprint, @article for journal
+  - Telemetry separated from publication registry (no _history in publications.json)
+  - Line count lint: <=180 OK, 181-220 INFO, >220 WARNING, >260 FAIL
+  - First-screen density check: first 40 lines must answer Who/What/Where
 
-STATISTICS PRESERVATION (Sub Task 2):
-  - Before writing generated/publications.json, load existing file
-  - Merge: new YAML data takes precedence for metadata fields
-  - Preserve: telemetry stats, _history snapshots (append-only)
-  - Never overwrite historical data with null/empty values
+STATISTICS PRESERVATION:
+  - publications.json contains only bibliographic metadata (no telemetry)
+  - Telemetry history is stored separately in generated/telemetry-history.json
+  - This keeps the publication registry clean and the analytics history separate
 
 Run locally:  python scripts/build.py
 Run in CI:    called by .github/workflows/build.yml
@@ -45,8 +48,9 @@ GEN_DIR   = ROOT / "generated"
 README    = ROOT / "README.md"
 
 # ── Evidence label maps ────────────────────────────────────────────────────
+# Renamed from "Epistemic status" to "Evidence status" for reader clarity
 
-EPISTEMIC_LABELS = {
+EVIDENCE_LABELS = {
     "established":   "ESTABLISHED",
     "derived":       "DERIVED",
     "computational": "COMPUTATIONAL",
@@ -62,6 +66,18 @@ PUB_STATUS_LABELS = {
     "archived":   "ARCHIVED",
     "superseded": "SUPERSEDED",
 }
+
+# BibTeX entry types by publication type
+BIBTEX_TYPES = {
+    "journal-article":  "article",
+    "conference-paper": "inproceedings",
+    "book-chapter":     "incollection",
+    "technical-report": "techreport",
+    "working-paper":    "misc",
+    "preprint":         "misc",
+    "research-note":    "misc",
+}
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -89,25 +105,30 @@ def fmt_date(date_str) -> str:
     return parts[0]
 
 
-def build_links_inline(pub: dict) -> str:
-    """Build compact inline links for publication cards."""
+def build_links(pub: dict, compact: bool = True) -> str:
+    """Build link string. compact=True for inline, False for full."""
     parts = []
     ids = pub.get("identifiers", {}) or {}
     lnk = pub.get("links", {}) or {}
+
     if ids.get("doi"):
         parts.append(f"[DOI](https://doi.org/{ids['doi']})")
     if ids.get("osf"):
         osf = ids["osf"]
-        url = osf if osf.startswith("http") else f"https://doi.org/{osf}"
+        url = osf if osf.startswith("http") else f"https://osf.io/{osf.split('/')[-1].lower()}/"
         parts.append(f"[OSF]({url})")
+    if ids.get("arxiv"):
+        parts.append(f"[arXiv](https://arxiv.org/abs/{ids['arxiv']})")
     if lnk.get("researchgate"):
         parts.append(f"[ResearchGate]({lnk['researchgate']})")
     if lnk.get("github"):
         parts.append(f"[GitHub]({lnk['github']})")
+
     return " | ".join(parts) if parts else "*Links pending*"
 
 
 def bibtex_key(pub: dict) -> str:
+    """Unique key: lastname + year + topic + seq."""
     last  = pub["authors"][0].split()[-1].lower()
     parts = pub["id"].split("-")
     topic = parts[1].lower() if len(parts) > 1 else "pub"
@@ -117,115 +138,54 @@ def bibtex_key(pub: dict) -> str:
 
 
 def to_bibtex(pub: dict) -> str:
-    key  = bibtex_key(pub)
-    ids  = pub.get("identifiers", {}) or {}
-    doi  = ids.get("doi", "")
-    lines = [
-        f"@article{{{key},",
-        f"  title   = {{{pub['title']}}},",
-        f"  author  = {{{'  and  '.join(pub['authors'])}}},",
-        f"  year    = {{{pub['year']}}},",
-        f"  note    = {{{pub['publication_status']} | epistemic: {pub['epistemic_status']}}},",
-    ]
+    """Generate BibTeX with correct entry type per publication type."""
+    key       = bibtex_key(pub)
+    bib_type  = BIBTEX_TYPES.get(pub.get("type", "working-paper"), "misc")
+    ids       = pub.get("identifiers", {}) or {}
+    doi       = ids.get("doi", "")
+
+    lines = [f"@{bib_type}{{{key},"]
+    lines.append(f"  title   = {{{pub['title']}}},")
+    lines.append(f"  author  = {{{'  and  '.join(pub['authors'])}}},")
+    lines.append(f"  year    = {{{pub['year']}}},")
+
+    if bib_type == "misc":
+        lines.append(f"  howpublished = {{{pub['publication_status']}}},")
+        lines.append(f"  note    = {{Evidence status: {pub['epistemic_status']}}},")
+    else:
+        lines.append(f"  note    = {{{pub['publication_status']} | evidence: {pub['epistemic_status']}}},")
+
     if doi:
         lines.append(f"  doi     = {{{doi}}},")
         lines.append(f"  url     = {{https://doi.org/{doi}}},")
+
     lines.append("}")
     return "\n".join(lines)
-
-
-# ── Statistics Preservation (Sub Task 2) ──────────────────────────────────
-
-def load_existing_generated() -> dict:
-    """
-    Load existing generated/publications.json to preserve historical stats.
-    Returns empty dict if file does not exist.
-    """
-    json_path = GEN_DIR / "publications.json"
-    if json_path.exists():
-        try:
-            with open(json_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"[WARNING] Could not load existing publications.json: {e}")
-            print("[WARNING] Starting fresh — historical stats will not be preserved.")
-    return {}
-
-
-def merge_publication_stats(new_pub: dict, existing_by_id: dict) -> dict:
-    """
-    Merge new publication data with existing historical stats.
-
-    Preservation rules:
-    - All metadata fields from new_pub (from publications.yaml) take precedence
-    - EXCEPT: telemetry stats are preserved from existing if new value is null/missing
-    - _history is append-only: existing history is always preserved
-
-    Fields preserved from history:
-    - telemetry.zenodo_views, zenodo_downloads, last_fetched
-    - _history (list of dated snapshots, never overwritten)
-    - _stats_snapshot (manually verified stats)
-    """
-    pub_id   = new_pub.get("id", "")
-    existing = existing_by_id.get(pub_id, {})
-    merged   = dict(new_pub)  # start with fresh YAML data
-
-    # Preserve telemetry if not present in new data
-    existing_telemetry = existing.get("telemetry", {})
-    new_telemetry      = merged.get("telemetry", {})
-    if existing_telemetry and not new_telemetry:
-        merged["telemetry"] = existing_telemetry
-        print(f"  [PRESERVE] {pub_id}: telemetry stats preserved from history")
-
-    # Preserve _history (append-only — never overwrite)
-    existing_history = existing.get("_history", [])
-    merged["_history"] = existing_history
-
-    # Preserve _stats_snapshot (manually verified stats)
-    existing_snapshot = existing.get("_stats_snapshot", {})
-    if existing_snapshot and not merged.get("_stats_snapshot"):
-        merged["_stats_snapshot"] = existing_snapshot
-        print(f"  [PRESERVE] {pub_id}: stats snapshot preserved from history")
-
-    return merged
-
-
-def build_publications_json(data: dict) -> dict:
-    """
-    Build the output publications.json, merging with existing historical data.
-    """
-    existing_data = load_existing_generated()
-
-    # Build lookup by ID from existing data
-    existing_pubs = existing_data.get("publications", [])
-    existing_by_id = {p["id"]: p for p in existing_pubs if isinstance(p, dict) and "id" in p}
-
-    if existing_by_id:
-        print(f"  [HISTORY] Found {len(existing_by_id)} existing records to merge with")
-    else:
-        print("  [HISTORY] No existing records found — starting fresh")
-
-    # Merge each publication
-    merged_pubs = []
-    for pub in data.get("publications", []):
-        merged = merge_publication_stats(pub, existing_by_id)
-        merged_pubs.append(merged)
-
-    # Build output
-    output = dict(data)
-    output["publications"] = merged_pubs
-    output["_generated"]   = datetime.now(timezone.utc).isoformat()
-    output["_generator"]   = "scripts/build.py v2"
-
-    return output
 
 
 # ── Generators ─────────────────────────────────────────────────────────────
 
 def gen_json(data: dict) -> None:
-    """Generate publications.json with history preservation."""
-    print("\nBuilding publications.json (with history preservation):")
-    output = build_publications_json(data)
+    """
+    Generate publications.json — bibliographic metadata only.
+    No telemetry, no _history. Clean publication registry.
+    """
+    # Strip editorial-only fields not needed in machine-readable output
+    pubs_clean = []
+    for pub in data.get("publications", []):
+        p = dict(pub)
+        # Keep all bibliographic fields; remove editorial-only fields
+        # (selected/featured_order/one_line_contribution are editorial, not bibliographic)
+        pubs_clean.append(p)
+
+    output = {
+        "_schema_version": data.get("schema_version", "1.0"),
+        "_generated":      datetime.now(timezone.utc).isoformat(),
+        "_generator":      "scripts/build.py v2.1",
+        "_note":           "Bibliographic metadata only. Telemetry stored separately.",
+        "registry":        data.get("registry", {}),
+        "publications":    pubs_clean,
+    }
 
     out = GEN_DIR / "publications.json"
     with open(out, "w", encoding="utf-8") as f:
@@ -235,12 +195,12 @@ def gen_json(data: dict) -> None:
 
 
 def gen_bibtex(publications: list) -> None:
-    """Generate bibliography.bib for all publications."""
+    """Generate bibliography.bib with correct BibTeX entry types."""
     out = GEN_DIR / "bibliography.bib"
     entries = [to_bibtex(p) for p in publications]
     with open(out, "w", encoding="utf-8") as f:
         f.write(f"% Auto-generated bibliography -- {datetime.now(timezone.utc).date()}\n")
-        f.write("% Full bibliography: https://github.com/suns1232023/Publications\n\n")
+        f.write("% Full record: https://github.com/suns1232023/Publications\n\n")
         f.write("\n\n".join(entries))
         f.write("\n")
     print(f"  -> {out.relative_to(ROOT)}")
@@ -248,8 +208,17 @@ def gen_bibtex(publications: list) -> None:
 
 def gen_readme(data: dict) -> None:
     """
-    Generate README.md with V2 editorial structure.
-    Target: 120-180 lines.
+    Generate README.md with V2.1 editorial structure.
+
+    Structure:
+      Block 1: Scott Sun — researcher identity (not "# Publications")
+      Block 2: Research Overview — editorial prose
+      Block 3: Research Architecture — ASCII map with disclaimer
+      Block 4: Selected Research — 4 cards (contribution + status + links)
+      Block 5: Complete Publication Record — two-layer compact entries
+      Block 6: Evidence & Publication Status — small table
+      Block 7: Citation — 2 BibTeX + bibliography.bib link
+      Block 8: Research Identifiers + generated footer
     """
     reg  = data["registry"]
     pubs = data["publications"]
@@ -261,30 +230,27 @@ def gen_readme(data: dict) -> None:
         key=lambda p: p.get("featured_order", 99)
     )
 
-    # Group all papers by primary research area
+    # Group all papers by primary research area, sorted by date desc
     by_area: dict[str, list] = defaultdict(list)
     for pub in sorted(pubs, key=lambda p: p.get("date") or "", reverse=True):
         area = (pub.get("research_area") or ["Other"])[0]
         by_area[area].append(pub)
 
-    # Count epistemic statuses
-    ep_counts: dict[str, int] = defaultdict(int)
-    for pub in pubs:
-        ep_counts[pub["epistemic_status"]] += 1
-
     lines: list[str] = []
 
-    # ── BLOCK 1: Research Identity ─────────────────────────────────────────
+    # ── BLOCK 1: Researcher Identity ───────────────────────────────────────
+    # "Scott Sun" first — researcher is the entry point, not the database
     lines += [
-        "# Research Publications",
+        "# Scott Sun",
         "",
-        f"> **Scott Sun** · Independent Researcher",
-        f"> Information · Geometry · Mathematical Physics · Computational Mathematics",
+        "Independent Researcher",
         "",
-        f"> {len(pubs)} research records · 2026 · "
+        "Information · Geometry · Mathematical Physics · Computational Mathematics",
+        "",
         f"[ORCID](https://orcid.org/{reg['orcid']}) · "
         f"[Google Scholar](https://scholar.google.com/citations?user=bmVEc3wAAAAJ) · "
-        f"[ResearchGate](https://www.researchgate.net/profile/Scott-Sun-3)",
+        f"[ResearchGate](https://www.researchgate.net/profile/Scott-Sun-3) · "
+        f"[scottsun.com]({reg.get('website', 'https://scottsun.com')})",
         "",
         "---",
         "",
@@ -294,12 +260,19 @@ def gen_readme(data: dict) -> None:
     lines += [
         "## Research Overview",
         "",
-        "An evolving record of independent research spanning information theory, "
-        "mathematical physics, and computational mathematics.",
+        "This archive brings together independent research on information, "
+        "geometry, emergent physical structure, and computational mathematics.",
         "",
-        "Selected papers are presented with research context, publication status, "
-        "and links to the underlying research record. "
-        "This page is intended for academic readers and potential collaborators.",
+        "The work ranges from information-geometric frameworks and spectral "
+        "dimension to mathematical physics and computational investigations "
+        "in additive combinatorics.",
+        "",
+        "The archive distinguishes publication status from evidence status, "
+        "so that exploratory frameworks, computational results, and "
+        "mathematical derivations are not presented as equivalent forms of evidence.",
+        "",
+        "Selected Research reflects the current research programme, "
+        "not a ranking of publications.",
         "",
         "---",
         "",
@@ -309,28 +282,31 @@ def gen_readme(data: dict) -> None:
     lines += [
         "## Research Architecture",
         "",
-        "The diagram below describes the current organisation of the research programme,",
+        "The diagram describes the current organisation of the research programme,",
         "not a claim that all components constitute an established physical theory.",
         "",
         "```",
-        "INFORMATION & GEOMETRY",
+        "RESEARCH PROGRAMME",
         "  |",
-        "  +-- Structural Information (HTSIE)",
+        "  +-- INFORMATION & GEOMETRY",
         "  |       |",
-        "  |       +-- Exchange Entropy (EEI)",
+        "  |       +-- Structural Information (HTSIE)",
+        "  |       |       |",
+        "  |       |       +-- Exchange Entropy (EEI)",
+        "  |       |",
+        "  |       +-- Information Fractal Geometry (IFG)",
+        "  |               |",
+        "  |               +-- Spectral Dimension",
+        "  |               +-- Mathematical Physics (Mobius-Lorentz)",
         "  |",
-        "  +-- Information Fractal Geometry (IFG)",
+        "  +-- EMERGENT PHYSICS",
+        "  |       |",
+        "  |       +-- Causality & Time",
+        "  |       +-- Fractal Folding & Quantum Gravity",
+        "  |",
+        "  +-- COMPUTATIONAL MATHEMATICS",
         "          |",
-        "          +-- Spectral Dimension",
-        "          +-- Mathematical Physics (Mobius-Lorentz)",
-        "",
-        "EMERGENT PHYSICS",
-        "  |",
-        "  +-- Causality & Time (Why the Past May Be Inaccessible)",
-        "",
-        "COMPUTATIONAL MATHEMATICS",
-        "  |",
-        "  +-- Sun (2,4,6,8) Binomial Representation",
+        "          +-- Sun (2,4,6,8) Binomial Representation",
         "```",
         "",
         "---",
@@ -341,44 +317,39 @@ def gen_readme(data: dict) -> None:
     lines += [
         "## Selected Research",
         "",
-        "> Papers selected to represent the current research focus. "
-        "Selection reflects the author's assessment of representative work, "
-        "not an external quality ranking.",
-        "",
     ]
 
     for i, pub in enumerate(selected, 1):
         pub_status = PUB_STATUS_LABELS.get(pub["publication_status"], pub["publication_status"])
-        ep_status  = EPISTEMIC_LABELS.get(pub["epistemic_status"], pub["epistemic_status"])
+        ev_status  = EVIDENCE_LABELS.get(pub["epistemic_status"], pub["epistemic_status"])
         contrib    = str(pub.get("one_line_contribution") or "").strip()
-        area       = (pub.get("research_area") or [""])[0]
+        links_str  = build_links(pub)
 
-        # summary line is plain text (no Markdown bold) for GitHub compatibility
-        summary_line = (
+        # summary: plain text only (no Markdown bold) for GitHub compatibility
+        summary = (
             f"{i:02d} | {pub['title'][:65]}{'...' if len(pub['title'])>65 else ''} "
-            f"-- {fmt_authors(pub['authors'])} · {pub['year']} · {pub_status} · {ep_status}"
+            f"-- {fmt_authors(pub['authors'])} · {pub['year']} "
+            f"· {pub_status} · {ev_status}"
         )
 
         lines += [
             "<details>",
-            f"<summary>{summary_line}</summary>",
+            f"<summary>{summary}</summary>",
             "",
         ]
         if contrib:
             lines += [f"> {contrib}", ""]
         lines += [
-            f"**Research area:** {area}",
+            f"Links: {links_str}",
+            "",
+            "</details>",
             "",
         ]
-        if pub.get("keywords"):
-            lines.append(f"**Keywords:** {' · '.join(pub['keywords'])}")
-            lines.append("")
-        lines.append(f"**Links:** {build_links_inline(pub)}")
-        lines += ["", "</details>", ""]
 
     lines += ["---", ""]
 
     # ── BLOCK 5: Complete Publication Record ───────────────────────────────
+    # Two-layer: always-visible compact line + expandable details
     lines += [
         "## Complete Publication Record",
         "",
@@ -388,53 +359,55 @@ def gen_readme(data: dict) -> None:
         lines += [f"### {area}", ""]
         for pub in area_pubs:
             pub_status = PUB_STATUS_LABELS.get(pub["publication_status"], pub["publication_status"])
-            ep_status  = EPISTEMIC_LABELS.get(pub["epistemic_status"], pub["epistemic_status"])
+            ev_status  = EVIDENCE_LABELS.get(pub["epistemic_status"], pub["epistemic_status"])
             ver        = (pub.get("versions") or {}).get("current", "")
             ver_str    = f" · {ver}" if ver else ""
+            ids        = pub.get("identifiers", {}) or {}
+            doi_inline = f" · [DOI](https://doi.org/{ids['doi']})" if ids.get("doi") else ""
 
-            summary_line = (
-                f"{pub['title'][:70]}{'...' if len(pub['title'])>70 else ''} "
+            # Layer 1: always visible — title + key metadata
+            always_line = (
+                f"{pub['title'][:68]}{'...' if len(pub['title'])>68 else ''} "
                 f"-- {fmt_authors(pub['authors'])} · {fmt_date(pub.get('date'))} "
-                f"· {pub_status} · {ep_status}{ver_str}"
+                f"· {pub_status} · {ev_status}{ver_str}{doi_inline}"
             )
+
+            # Layer 2: expandable — abstract + keywords + all links
+            abstract = pub.get("abstract", "").strip()
+            keywords = pub.get("keywords", []) or []
+            rel      = pub.get("relations", {}) or {}
+            notes    = pub.get("notes", "")
 
             lines += [
                 "<details>",
-                f"<summary>{summary_line}</summary>",
-                "",
-                f"**ID:** `{pub['id']}`",
-                "",
-                f"**Abstract:** {pub['abstract'].strip()}",
+                f"<summary>{always_line}</summary>",
                 "",
             ]
-            if pub.get("keywords"):
-                lines.append(f"**Keywords:** {' · '.join(pub['keywords'])}")
+            if abstract:
+                lines += [abstract, ""]
+            if keywords:
+                lines.append(f"Keywords: {' · '.join(keywords)}")
                 lines.append("")
-
-            ids = pub.get("identifiers", {}) or {}
-            if ids.get("doi"):
-                lines.append(f"**DOI:** [{ids['doi']}](https://doi.org/{ids['doi']})")
+            links_full = build_links(pub, compact=False)
+            if links_full != "*Links pending*":
+                lines.append(f"Links: {links_full}")
                 lines.append("")
-
-            rel = pub.get("relations", {}) or {}
             if rel.get("related_to"):
-                lines.append(f"**Related:** {', '.join(f'`{x}`' for x in rel['related_to'])}")
+                lines.append(f"Related: {', '.join(f'`{x}`' for x in rel['related_to'])}")
                 lines.append("")
-
-            if pub.get("notes"):
-                lines.append(f"**Note:** {pub['notes']}")
+            if notes:
+                lines.append(f"Note: {notes}")
                 lines.append("")
-
             lines += ["</details>", ""]
         lines.append("")
 
     lines += ["---", ""]
 
-    # ── BLOCK 6: Research Status ───────────────────────────────────────────
+    # ── BLOCK 6: Evidence & Publication Status ─────────────────────────────
     lines += [
-        "## Research Status",
+        "## Evidence & Publication Status",
         "",
-        "Each paper carries two independent labels:",
+        "Each paper carries two independent labels.",
         "",
         "**Publication status** — where the paper is in the publication lifecycle:",
         "",
@@ -444,17 +417,17 @@ def gen_readme(data: dict) -> None:
         "| `WORKING PAPER` | Working paper / research note |",
         "| `ARCHIVED` | Superseded by a later version |",
         "",
-        "**Epistemic status** — confidence level of the scientific claims:",
+        "**Evidence status** — the nature of the supporting evidence:",
         "",
         "| Label | Meaning |",
         "| :---- | :------ |",
-        "| `ESTABLISHED` | Relies on existing mathematical/scientific consensus |",
-        "| `DERIVED` | Derived under explicit stated assumptions |",
-        "| `COMPUTATIONAL` | Supported primarily by computational verification |",
-        "| `CONJECTURAL` | Conjecture / awaiting proof |",
-        "| `EXPLORATORY` | Exploratory theoretical framework |",
+        "| `ESTABLISHED` | Consistent with established scientific/mathematical results |",
+        "| `DERIVED` | Derived under explicitly stated assumptions |",
+        "| `COMPUTATIONAL` | Primarily supported by computational verification |",
+        "| `CONJECTURAL` | Proposed conjecture awaiting proof or independent validation |",
+        "| `EXPLORATORY` | Early-stage theoretical investigation |",
         "",
-        "> **Note:** Publication status does not equal epistemic status.",
+        "> Publication status does not equal evidence status.",
         "> A preprint may be `COMPUTATIONAL`; a working paper may be `EXPLORATORY`.",
         "",
         "---",
@@ -469,8 +442,12 @@ def gen_readme(data: dict) -> None:
         "",
     ]
 
-    # Show BibTeX for selected papers only (max 2)
-    selected_with_doi = [p for p in selected if (p.get("identifiers") or {}).get("doi")][:2]
+    # Show BibTeX for selected papers with DOI only (max 2)
+    selected_with_doi = [
+        p for p in selected
+        if (p.get("identifiers") or {}).get("doi")
+    ][:2]
+
     if selected_with_doi:
         lines += [
             "<details>",
@@ -478,17 +455,12 @@ def gen_readme(data: dict) -> None:
             "",
         ]
         for pub in selected_with_doi:
-            lines += [
-                "```bibtex",
-                to_bibtex(pub),
-                "```",
-                "",
-            ]
+            lines += ["```bibtex", to_bibtex(pub), "```", ""]
         lines += ["</details>", ""]
 
     lines += ["---", ""]
 
-    # ── BLOCK 8: Research Identifiers + Maintenance ────────────────────────
+    # ── BLOCK 8: Research Identifiers + Footer ─────────────────────────────
     lines += [
         "## Research Identifiers",
         "",
@@ -496,13 +468,14 @@ def gen_readme(data: dict) -> None:
         f"[Google Scholar](https://scholar.google.com/citations?user=bmVEc3wAAAAJ) · "
         f"[ResearchGate](https://www.researchgate.net/profile/Scott-Sun-3) · "
         f"[Lens.org](https://www.lens.org/lens/orcid/{reg['orcid']}) · "
-        f"[OSF](https://osf.io/caqxh/)",
+        f"[OSF](https://osf.io/caqxh/) · "
+        f"[scottsun.com]({reg.get('website', 'https://scottsun.com')})",
         "",
         "---",
         "",
-        f"*This page is generated from [`publications.yaml`](./publications.yaml) "
+        f"*Generated from [`publications.yaml`](./publications.yaml) "
         f"by [`scripts/build.py`](./scripts/build.py) on {now} UTC. "
-        f"To add or update a paper, edit `publications.yaml` — do not edit README.md directly.*",
+        f"To add or update a paper, edit `publications.yaml`.*",
     ]
 
     readme_content = "\n".join(lines) + "\n"
@@ -510,15 +483,34 @@ def gen_readme(data: dict) -> None:
     with open(README, "w", encoding="utf-8") as f:
         f.write(readme_content)
 
-    # Line count check
+    # ── Line count lint ────────────────────────────────────────────────────
     line_count = readme_content.count("\n")
-    if line_count > 200:
-        print(f"  [WARNING] README.md has {line_count} lines (target: 120-180). "
-              f"Consider condensing the Complete Publication Record section.")
-    elif line_count > 180:
-        print(f"  [INFO] README.md has {line_count} lines (approaching 180-line target).")
+    pub_count  = len(pubs)
+
+    if line_count <= 180:
+        print(f"  [OK] README.md: {line_count} lines")
+    elif line_count <= 220:
+        print(f"  [INFO] README.md: {line_count} lines "
+              f"(acceptable for {pub_count} publications)")
+    elif line_count <= 260:
+        print(f"  [WARNING] README.md: {line_count} lines "
+              f"(consider condensing Complete Publication Record)")
     else:
-        print(f"  [OK] README.md has {line_count} lines (within 120-180 target).")
+        print(f"  [FAIL] README.md: {line_count} lines "
+              f"(exceeds 260-line limit for {pub_count} publications)")
+
+    # ── First-screen density check ─────────────────────────────────────────
+    first_screen = "\n".join(lines[:40])
+    checks = {
+        "Who":   any(x in first_screen for x in ["Scott Sun", "Independent Researcher"]),
+        "What":  any(x in first_screen for x in ["Information", "Geometry", "Mathematics"]),
+        "Where": any(x in first_screen for x in ["ORCID", "Scholar", "ResearchGate"]),
+    }
+    failed = [k for k, v in checks.items() if not v]
+    if failed:
+        print(f"  [WARNING] First-screen missing: {failed}")
+    else:
+        print(f"  [OK] First-screen answers Who/What/Where within first 40 lines")
 
     print(f"  -> {README.relative_to(ROOT)}")
 
@@ -530,7 +522,7 @@ def main() -> None:
     data = load_yaml()
     pubs = data.get("publications", [])
     selected_count = sum(1 for p in pubs if p.get("selected") is True)
-    print(f"Found {len(pubs)} publications ({selected_count} selected for featured display)\n")
+    print(f"Found {len(pubs)} publications ({selected_count} selected)\n")
 
     GEN_DIR.mkdir(exist_ok=True)
 
@@ -539,7 +531,7 @@ def main() -> None:
     gen_bibtex(pubs)
     gen_readme(data)
 
-    print(f"\nDone -- {len(pubs)} publications processed")
+    print(f"\nDone -- {len(pubs)} publications")
 
 
 if __name__ == "__main__":
