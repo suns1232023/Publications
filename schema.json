@@ -84,7 +84,7 @@
         "epistemic_status": {
           "type": "string",
           "enum": ["established", "derived", "computational", "conjectural", "exploratory"],
-          "description": "Confidence level of the scientific claims. 'published' ≠ 'established'."
+          "description": "Confidence level of the scientific claims. 'published' does not equal 'established'."
         },
         "research_area": {
           "type": "array",
@@ -114,9 +114,9 @@
           "required": ["github"],
           "additionalProperties": false,
           "properties": {
-            "github":      { "type": ["string", "null"] },
-            "researchgate":{ "type": ["string", "null"] },
-            "project":     { "type": ["string", "null"] }
+            "github":       { "type": ["string", "null"] },
+            "researchgate": { "type": ["string", "null"] },
+            "project":      { "type": ["string", "null"] }
           }
         },
         "versions": {
@@ -133,7 +133,23 @@
             "related_to":   { "type": "array", "items": { "type": "string" } }
           }
         },
-        "notes": { "type": ["string", "null"] }
+        "notes": { "type": ["string", "null"] },
+        "selected": {
+          "type": ["boolean", "null"],
+          "default": false,
+          "description": "Whether this paper appears in the Selected Research section of README"
+        },
+        "featured_order": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Display order in Selected Research (1=first). Required when selected=true."
+        },
+        "one_line_contribution": {
+          "type": ["string", "null"],
+          "maxLength": 200,
+          "description": "One-sentence contribution statement for the Selected Research card (max 200 chars)"
+        }
       }
     }
   }
