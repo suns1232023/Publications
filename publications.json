@@ -204,3 +204,19 @@
     }
   ]
 }
+,
+{
+  "id": "sun-why-past-inaccessible-2026",
+  "category": "emergent-spacetime",
+  "title": "Why the Past May Be Physically Inaccessible: A Theoretical Review and Compatibility Framework",
+  "authors": ["Scott Sun", "Solomon Chen"],
+  "date": "2026-09",
+  "status": "Preprint",
+  "abstract": "Formulates the Historical Information Accessibility Problem (HIAP): whether a macroscopic physical system can be consistently re-embedded into an earlier epoch without violating geometric, quantum, causal, thermodynamic, and historical-information consistency conditions. Introduces Historical Exchange Asymmetry (HXA) as a new conceptual layer.",
+  "doi": "10.5281/zenodo.22139197",
+  "zenodo_doi": "10.5281/zenodo.22139197",
+  "researchgate_url": "https://www.researchgate.net/publication/414084644",
+  "osf_url": null,
+  "arxiv_id": null,
+  "keywords": ["time travel", "information accessibility", "causal structure", "thermodynamics"]
+}
