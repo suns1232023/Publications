@@ -1,0 +1,140 @@
+
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/suns1232023/Publications/schema.json",
+  "title": "Scott Sun Publications Registry",
+  "description": "JSON Schema for publications.yaml — validates structure, types, and allowed values.",
+  "type": "object",
+  "required": ["schema_version", "registry", "publications"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "registry": {
+      "type": "object",
+      "required": ["name", "maintainer"],
+      "additionalProperties": false,
+      "properties": {
+        "name":          { "type": "string" },
+        "maintainer":    { "type": "string" },
+        "researcher":    { "type": "string" },
+        "orcid":         { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]$" },
+        "website":       { "type": ["string", "null"] },
+        "github":        { "type": ["string", "null"] },
+        "last_reviewed": { "type": ["string", "null"] }
+      }
+    },
+    "publications": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/publication" }
+    }
+  },
+  "$defs": {
+    "publication": {
+      "type": "object",
+      "required": [
+        "id", "title", "authors", "year", "type",
+        "publication_status", "epistemic_status",
+        "research_area", "abstract", "identifiers", "links"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^SUN-[A-Z0-9]+-[0-9]{4}-[0-9]{3}$",
+          "description": "Stable identifier: SUN-<TOPIC>-<YEAR>-<SEQ>"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3
+        },
+        "authors": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2100
+        },
+        "date": {
+          "type": ["string", "null"]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "journal-article",
+            "conference-paper",
+            "working-paper",
+            "preprint",
+            "technical-report",
+            "research-note",
+            "book-chapter"
+          ]
+        },
+        "publication_status": {
+          "type": "string",
+          "enum": ["draft", "preprint", "published", "accepted", "archived", "superseded"],
+          "description": "Where the paper is in the publication lifecycle"
+        },
+        "epistemic_status": {
+          "type": "string",
+          "enum": ["established", "derived", "computational", "conjectural", "exploratory"],
+          "description": "Confidence level of the scientific claims. 'published' ≠ 'established'."
+        },
+        "research_area": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "abstract": {
+          "type": "string",
+          "minLength": 20
+        },
+        "identifiers": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "doi":    { "type": ["string", "null"] },
+            "zenodo": { "type": ["string", "null"] },
+            "arxiv":  { "type": ["string", "null"] },
+            "osf":    { "type": ["string", "null"] }
+          }
+        },
+        "links": {
+          "type": "object",
+          "required": ["github"],
+          "additionalProperties": false,
+          "properties": {
+            "github":      { "type": ["string", "null"] },
+            "researchgate":{ "type": ["string", "null"] },
+            "project":     { "type": ["string", "null"] }
+          }
+        },
+        "versions": {
+          "type": "object",
+          "properties": {
+            "current": { "type": "string" },
+            "history": { "type": "array" }
+          }
+        },
+        "relations": {
+          "type": "object",
+          "properties": {
+            "derived_from": { "type": "array", "items": { "type": "string" } },
+            "related_to":   { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "notes": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
