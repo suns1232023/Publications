@@ -1,4 +1,3 @@
-
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/suns1232023/Publications/schema.json",
@@ -84,7 +83,7 @@
         "epistemic_status": {
           "type": "string",
           "enum": ["established", "derived", "computational", "conjectural", "exploratory"],
-          "description": "Confidence level of the scientific claims. 'published' does not equal 'established'."
+          "description": "Nature of the supporting evidence. 'published' does not equal 'established'."
         },
         "research_area": {
           "type": "array",
@@ -135,20 +134,20 @@
         },
         "notes": { "type": ["string", "null"] },
         "selected": {
-          "type": ["boolean", "null"],
+          "type": "boolean",
           "default": false,
-          "description": "Whether this paper appears in the Selected Research section of README"
+          "description": "Whether this paper appears in Selected Research. Use true/false only."
         },
         "featured_order": {
           "type": ["integer", "null"],
           "minimum": 1,
-          "maximum": 10,
-          "description": "Display order in Selected Research (1=first). Required when selected=true."
+          "maximum": 4,
+          "description": "Display order in Selected Research (1-4). Required when selected=true."
         },
         "one_line_contribution": {
           "type": ["string", "null"],
           "maxLength": 200,
-          "description": "One-sentence contribution statement for the Selected Research card (max 200 chars)"
+          "description": "One-sentence contribution for the Selected Research card (max 200 chars)"
         }
       }
     }
