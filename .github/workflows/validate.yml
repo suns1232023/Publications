@@ -1,0 +1,40 @@
+
+name: Validate Publications Registry
+
+on:
+  push:
+    paths:
+      - "publications.yaml"
+      - "schema.json"
+      - "scripts/validate.py"
+      - ".github/workflows/validate.yml"
+  pull_request:
+    paths:
+      - "publications.yaml"
+      - "schema.json"
+      - "scripts/validate.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate YAML + Schema
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install pyyaml jsonschema
+
+      - name: Validate publications.yaml
+        run: python scripts/validate.py
