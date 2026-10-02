@@ -1,0 +1,325 @@
+
+schema_version: "1.0"
+
+registry:
+  name: "Scott Sun — Publications Registry"
+  maintainer: "Scott Sun"
+  researcher: "Scott Sun"
+  orcid: "0009-0002-1095-6228"
+  website: "https://scottsun.com"
+  github: "https://github.com/suns1232023"
+  last_reviewed: "2026-10-02"
+
+publications:
+
+  - id: "SUN-2468-2026-001"
+    title: "Sun's (2,4,6,8) Binomial Representation Program: Multi-Kernel Computational Verification, Modular Radar Audits, and Chunk-Level Lean 4 Formalization"
+    authors:
+      - "Scott Sun"
+    year: 2026
+    date: "2026-09-01"
+    type: "working-paper"
+    publication_status: "preprint"
+    epistemic_status: "computational"
+    research_area:
+      - "Additive Combinatorics"
+      - "Computational Number Theory"
+      - "Formal Verification"
+    keywords:
+      - "OEIS A306477"
+      - "binomial representation"
+      - "Lean 4"
+      - "exhaustive search"
+    abstract: >
+      Computational verification of the candidate counterexample
+      n* = 896,315,812,331,399 to Sun's (2,4,6,8) binomial representation
+      conjecture (OEIS A306477). Reports 12 independent verification kernels,
+      modular radar audits, and chunk-level Lean 4 kernel verification.
+      This is a computational audit, not an analytic proof.
+    identifiers:
+      doi: "10.5281/zenodo.21544303"
+      zenodo: "10.5281/zenodo.21544303"
+      arxiv: null
+      osf: "10.17605/OSF.IO/CAQXH"
+    links:
+      github: "https://github.com/suns1232023/sun-2468-conjecture"
+      researchgate: "https://www.researchgate.net/publication/414820127"
+      project: "https://github.com/suns1232023/sun-2468-conjecture"
+    versions:
+      current: "V40.3"
+      history:
+        - version: "V40.3"
+          date: "2026-09-01"
+          status: "current"
+        - version: "V23.4"
+          date: "2026-08-28"
+          status: "archived"
+    relations:
+      derived_from: []
+      related_to:
+        - "SUN-2468-2026-002"
+    notes: "Supersedes V23.4. Repository is a reproducibility package, not an independent proof."
+
+  - id: "SUN-2468-2026-002"
+    title: "A Computational Audit of a Candidate Counterexample to Sun's (2,4,6,8) Conjecture — Version 23.4: Exhaustive Verification and Cantor-Pascal Diagnostics"
+    authors:
+      - "Scott Sun"
+    year: 2026
+    date: "2026-08-28"
+    type: "working-paper"
+    publication_status: "archived"
+    epistemic_status: "computational"
+    research_area:
+      - "Additive Combinatorics"
+      - "Computational Number Theory"
+    keywords:
+      - "OEIS A306477"
+      - "exhaustive search"
+      - "Cantor-Pascal"
+      - "counterexample candidate"
+    abstract: >
+      Exhaustive computational audit of the candidate counterexample
+      n* = 896,315,812,331,399 to Sun's (2,4,6,8) binomial representation
+      conjecture. Enumerates all 2,818,953,028 admissible triples and
+      introduces the Cantor-Pascal diagnostic framework.
+    identifiers:
+      doi: "10.5281/zenodo.22139197"
+      zenodo: "10.5281/zenodo.22139197"
+      arxiv: null
+      osf: "10.17605/OSF.IO/CAQXH"
+    links:
+      github: "https://github.com/suns1232023/sun-2468-conjecture"
+      researchgate: "https://www.researchgate.net/publication/414820127"
+      project: "https://github.com/suns1232023/sun-2468-conjecture"
+    versions:
+      current: "V23.4"
+      history:
+        - version: "V23.4"
+          date: "2026-08-28"
+          status: "archived"
+    relations:
+      derived_from: []
+      related_to:
+        - "SUN-2468-2026-001"
+    notes: "Archived predecessor to V40.3. Cited in OEIS A306477 LINKS."
+
+  - id: "SUN-HTSIE-2026-001"
+    title: "The Hidden Thread of Structural Information Evolution: A Comparative Study of Condensed Matter, Quantum Plasma and Black Hole Systems"
+    authors:
+      - "Scott Sun"
+    year: 2026
+    date: "2026-06-01"
+    type: "working-paper"
+    publication_status: "preprint"
+    epistemic_status: "exploratory"
+    research_area:
+      - "Information Theory"
+      - "Emergent Physics"
+      - "Condensed Matter"
+    keywords:
+      - "structural information"
+      - "information evolution"
+      - "black holes"
+      - "Bekenstein limit"
+    abstract: >
+      Proposes a unified framework linking condensed matter, quantum plasma,
+      and black holes. Shows that energy storage migrates from particle kinetics
+      to boundary encoding, unifying the Chandrasekhar, TOV, and Bekenstein
+      limits as expressions of a single information principle.
+    identifiers:
+      doi: "10.5281/zenodo.20792832"
+      zenodo: "10.5281/zenodo.20792832"
+      arxiv: null
+      osf: null
+    links:
+      github: "https://github.com/suns1232023/HTSIE-Research-Program"
+      researchgate: "https://www.researchgate.net/publication/411094172"
+      project: "https://github.com/suns1232023/HTSIE-Research-Program"
+    versions:
+      current: "V1.0"
+      history:
+        - version: "V1.0"
+          date: "2026-06-01"
+          status: "current"
+    relations:
+      derived_from: []
+      related_to:
+        - "SUN-IFG-2026-001"
+        - "SUN-EEI-2026-001"
+    notes: null
+
+  - id: "SUN-IFG-2026-001"
+    title: "Information Fractal Geometry (IFG): A Geometry-First Reconstruction of the HTSIE Framework (v1.0)"
+    authors:
+      - "Scott Sun"
+      - "Solomon Chen"
+    year: 2026
+    date: "2026-07-01"
+    type: "working-paper"
+    publication_status: "preprint"
+    epistemic_status: "exploratory"
+    research_area:
+      - "Information Geometry"
+      - "Emergent Physics"
+    keywords:
+      - "information geometry"
+      - "fractal geometry"
+      - "HTSIE"
+      - "RG flow"
+    abstract: >
+      Reconstructs the IFG framework centered on the Information Accessibility
+      Transition (IAT). Proves that gravitational compression (UV) and
+      cosmological dilution (IR) flow toward the same geometric fixed point —
+      the Boundary Encoding Phase (BEP) — under RG analysis.
+    identifiers:
+      doi: null
+      zenodo: null
+      arxiv: null
+      osf: null
+    links:
+      github: "https://github.com/suns1232023/HTSIE-Research-Program"
+      researchgate: null
+      project: "https://github.com/suns1232023/HTSIE-Research-Program"
+    versions:
+      current: "V1.0"
+      history:
+        - version: "V1.0"
+          date: "2026-07-01"
+          status: "current"
+    relations:
+      derived_from: []
+      related_to:
+        - "SUN-HTSIE-2026-001"
+    notes: null
+
+  - id: "SUN-EEI-2026-001"
+    title: "Exchange Entropy Index (EEI): An Operational Metric for Information Processing Fidelity in Financial Markets"
+    authors:
+      - "Scott Sun"
+    year: 2026
+    date: "2026-09-01"
+    type: "working-paper"
+    publication_status: "preprint"
+    epistemic_status: "exploratory"
+    research_area:
+      - "Information Theory"
+      - "Financial Economics"
+    keywords:
+      - "exchange entropy"
+      - "market efficiency"
+      - "information silos"
+      - "EMH"
+    abstract: >
+      Introduces the Exchange Entropy Index (EEI) as an operational metric
+      for information processing fidelity in financial markets. Unifies the
+      Efficient Market Hypothesis and Behavioral Finance under a single
+      continuous state variable via an information-physics paradigm.
+    identifiers:
+      doi: null
+      zenodo: null
+      arxiv: null
+      osf: "https://osf.io/6nje9/"
+    links:
+      github: "https://github.com/suns1232023/exchange-entropy-eei"
+      researchgate: null
+      project: "https://github.com/suns1232023/exchange-entropy-eei"
+    versions:
+      current: "V1.0"
+      history:
+        - version: "V1.0"
+          date: "2026-09-01"
+          status: "current"
+    relations:
+      derived_from:
+        - "SUN-IFG-2026-001"
+      related_to:
+        - "SUN-HTSIE-2026-001"
+    notes: null
+
+  - id: "SUN-MOBIUS-2026-001"
+    title: "Möbius–Lorentz Quotients and Null Pin Holonomy: Affine Normal Forms, Null-Displacement Loci, Mapping-Torus Topology, Pin Lifts, and Mirror-Residue Pairing"
+    authors:
+      - "Scott Sun"
+      - "Solomon Chen"
+    year: 2026
+    date: "2026-08-01"
+    type: "working-paper"
+    publication_status: "preprint"
+    epistemic_status: "derived"
+    research_area:
+      - "Mathematical Physics"
+      - "Differential Geometry"
+    keywords:
+      - "Möbius transformation"
+      - "Lorentz group"
+      - "pin holonomy"
+      - "null geometry"
+    abstract: >
+      Develops a rigorous mathematical framework for Lorentzian Möbius-type
+      quotients and null pin holonomy, establishing seven theorems on affine
+      normal forms, null-displacement loci, topology, and mirror-residue pairing.
+    identifiers:
+      doi: "10.5281/zenodo.22019535"
+      zenodo: "10.5281/zenodo.22019535"
+      arxiv: null
+      osf: null
+    links:
+      github: null
+      researchgate: "https://www.researchgate.net/publication/410989519"
+      project: null
+    versions:
+      current: "V1.0"
+      history:
+        - version: "V1.0"
+          date: "2026-08-01"
+          status: "current"
+    relations:
+      derived_from: []
+      related_to:
+        - "SUN-HTSIE-2026-001"
+    notes: null
+
+  - id: "SUN-PAST-2026-001"
+    title: "Why the Past May Be Physically Inaccessible: A Theoretical Review and Compatibility Framework"
+    authors:
+      - "Scott Sun"
+      - "Solomon Chen"
+    year: 2026
+    date: "2026-09-08"
+    type: "working-paper"
+    publication_status: "preprint"
+    epistemic_status: "exploratory"
+    research_area:
+      - "Theoretical Physics"
+      - "Philosophy of Physics"
+    keywords:
+      - "time travel"
+      - "information accessibility"
+      - "causal structure"
+      - "thermodynamics"
+    abstract: >
+      Formulates the Historical Information Accessibility Problem (HIAP):
+      whether a macroscopic physical system can be consistently re-embedded
+      into an earlier epoch without violating geometric, quantum, causal,
+      thermodynamic, and historical-information consistency conditions.
+      Introduces Historical Exchange Asymmetry (HXA) as a new conceptual layer.
+    identifiers:
+      doi: null
+      zenodo: null
+      arxiv: null
+      osf: null
+    links:
+      github: null
+      researchgate: "https://www.researchgate.net/publication/414084644"
+      project: null
+    versions:
+      current: "V1.0"
+      history:
+        - version: "V1.0"
+          date: "2026-09-08"
+          status: "current"
+    relations:
+      derived_from: []
+      related_to:
+        - "SUN-HTSIE-2026-001"
+    notes: null
